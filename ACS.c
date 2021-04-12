@@ -1,10 +1,133 @@
 #include "ASC.h"
 
+void print_sys_calls_sequence_array(sys_call_sequence_array *array, unsigned int size)
+{
+    unsigned int index = 0;
+    while (index < size)
+    {
+        fprintf(stdout, "name : %s ", array[index].name);
+        fprintf(stdout, " id : %u\n", array[index].id);
+        index++;
+    }
+}
+void print_sys_calls_array_info(sys_call_info *array, unsigned int size)
+{
+    unsigned int index = 0;
+    while (index < size)
+    {
+        fprintf(stdout, "name : %s ", array[index].name);
+        fprintf(stdout, " id : %u ", array[index].id);
+        fprintf(stdout, " times  : %d\n", array[index].times);
+        index++;
+    }
+}
+sys_call_info create_sys_call_info_entry(char *_name, int times)
+{
+    sys_call_info entry;
+    int str_len = strlen(_name);
+    entry.name = malloc(str_len + 1);
+    memcpy(entry.name, _name, str_len + 1);
+    entry.times = times;
+    entry.id = 0;
 
-unsigned int system_calls_zize(FILE *fp)
+    return entry;
+}
+sys_call_sequence_array create_sys_call_seq_entry(char *_name)
+{
+    sys_call_sequence_array entry;
+    int str_len = strlen(_name);
+    entry.name = malloc(str_len + 1);
+    memcpy(entry.name, _name, (strlen(_name) + 1));
+    entry.id = 0;
+    return entry;
+}
+
+unsigned int fill_structures(FILE *fp, sys_call_info *sys_call_info_array, sys_call_sequence_array *seq_array)
+{
+    int ch = 0;
+    short is_info = 0;
+    char *sys_call_name;
+    unsigned int index = 0, str_size = 5, sys_call_info_array_index = 0, tmp_index = 0, seq_array_index = 0;
+    unsigned int times_start_pos = 0;
+    sys_call_name = malloc(sizeof(char) * str_size);
+
+    if (fp == NULL)
+    {
+        fprintf(stderr, "error can't open file\n");
+        return 0;
+    }
+    while (1)
+    {
+        if (ch == EOF)
+            break;
+        ch = fgetc(fp);
+        if (ch == '\n' || ch == EOF)
+        {
+            sys_call_name[index] = '\0';
+
+            if (is_info)
+            {
+
+                while (sys_call_name[tmp_index] != '\0')
+                {
+                    if (sys_call_name[tmp_index] == ' ')
+                    {
+                        times_start_pos = tmp_index + 1;
+                        break;
+                    }
+                    tmp_index++;
+                }
+                sys_call_name[times_start_pos - 1] = '\0';
+                sys_call_info_array[sys_call_info_array_index++] = create_sys_call_info_entry(sys_call_name, atoi(sys_call_name + times_start_pos));
+            }
+
+            tmp_index = 0;
+            times_start_pos = 0;
+            index = 0;
+            is_info = 1;
+            continue;
+        }
+        else
+        {
+            if (!is_info)
+            {
+                if (ch == ' ' || ch == '\n' || ch == '\r')
+                {
+                    sys_call_name[index] = '\0';
+                    //fprintf(stdout, "%s\n", sys_call_name);
+                    seq_array[seq_array_index++] = create_sys_call_seq_entry(sys_call_name);
+
+                    index = 0;
+                }
+                else
+                {
+                    sys_call_name[index++] = ch;
+                }
+            }
+            else
+            {
+                if (ch != '\r')
+                    sys_call_name[index++] = ch;
+            }
+        }
+
+        if (index >= str_size)
+        {
+            str_size *= 2;
+            sys_call_name = realloc(sys_call_name, str_size * sizeof(char));
+        }
+    }
+
+    fseek(fp, 0, SEEK_SET);
+    return 1;
+}
+
+unsigned int system_calls_size(FILE *fp, unsigned int *sequence_size)
 {
     unsigned int sys_calls_array_size = 0;
     int ch;
+    short is_info = 0;
+
     if (fp == NULL)
     {
         fprintf(stderr, "error can't open file\n");
@@ -12,34 +135,94 @@ unsigned int system_calls_zize(FILE *fp)
     }
     while ((ch = fgetc(fp)) != EOF)
     {
+        if (ch == ' ' && !is_info)
+            (*sequence_size) = (*sequence_size) + 1;
 
         if (ch == '\n')
         {
+            is_info = 1;
             sys_calls_array_size++;
         }
     }
     fseek(fp, 0, SEEK_SET);
+    (*sequence_size) = (*sequence_size) + 1;
     return sys_calls_array_size;
 }
+void access_control_system(sys_call_info *sys_call_info_array, sys_call_sequence_array *seq_array)
+{
+}
 
-short fill_sys_calls_array(FILE * fp,sys_call_info * sys_calls_array )
+short fill_sys_calls_array(FILE *fp, sys_call_info *sys_calls_array)
 {
     return 1;
 }
 int main(int argc, char **argv)
 {
     FILE *fp;
-    unsigned int sys_calls_array_size = 0;
+    sys_call_info *sys_call_info_array;
+    sys_call_sequence_array *seq_array;
+
+    unsigned int sys_calls_array_size = 0, sys_calls_seq_size = 0;
     sys_call_info *sys_calls_array;
     if (argc > 1)
     {
 
         fp = fopen(argv[1], "r");
-        sys_calls_array_size = system_calls_zize(fp);
+        sys_calls_array_size = system_calls_size(fp, &sys_calls_seq_size);
         fprintf(stdout, "found :  %u sys calls\n", sys_calls_array_size);
-        sys_calls_array = malloc(sizeof(sys_call_info) * sys_calls_array_size);
-    
-    
+        sys_call_info_array = malloc(sizeof(sys_call_info) * sys_calls_array_size);
+        seq_array = malloc(sizeof(sys_call_sequence_array) * sys_calls_seq_size);
+        fill_structures(fp, sys_call_info_array, seq_array);
+        print_sys_calls_sequence_array(seq_array, sys_calls_seq_size);
+        print_sys_calls_array_info(sys_call_info_array, sys_calls_array_size);
+
+        if (argv[2] == NULL)
+        {
+            fprintf(stderr, "error not a second argument provided \n");
+        }
+        else
+        {
+            long sc_number, sc_retcode;
+
+            int status;
+            long orig_eax;
+            int pid = fork();
+            if (pid == 0)
+            {
+                char *args[2];
+                int length = strlen(argv[2]);
+                args[0] = malloc(sizeof(char) * (length + 1 + 2));
+                args[1] = NULL;
+                args[0][0] = '.';
+                args[0][1] = '/';
+                memcpy((args[0] + 2), argv[2], length + 1);
+                ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+
+                execvp(args[0], args);
+            }
+            else
+            {
+                wait(NULL);
+                struct user_regs_struct regs;
+                ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+                printf("The child made a system call %lld\n", regs.orig_rax);
+
+                /*wait(&status);
+                    while (status == 1407)
+                    {
+                        ptrace(PTRACE_GETREGS, pid, 0, &regs);
+                      
+                        unsigned long long int syscall_num = regs.orig_rax;
+                        fprintf(stderr, "number : %lld\n", syscall_num);
+                        break;
+                    }
+
+                    ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+                    wait(&status);*/
+                ptrace(PTRACE_CONT, pid, NULL, NULL);
+                wait(NULL);
+            }
+        }
     }
     else
     {
