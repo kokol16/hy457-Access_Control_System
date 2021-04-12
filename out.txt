@@ -1,0 +1,34 @@
+found :  3 sys calls
+name : mprotect  id : 0
+name : mprotect  id : 0
+name : munmap  id : 0
+name : clone  id : 0  times  : 5
+name : mmap  id : 0  times  : 6
+name : gettid  id : 0  times  : 3
+SystemCall  59 
+SystemCall  12 
+SystemCall  21 
+SystemCall  21 
+SystemCall  257 
+SystemCall  5 
+SystemCall  9 
+SystemCall  3 
+SystemCall  21 
+SystemCall  257 
+SystemCall  0 
+SystemCall  5 
+SystemCall  9 
+SystemCall  9 
+SystemCall  10 
+SystemCall  9 
+SystemCall  9 
+SystemCall  3 
+SystemCall  158 
+SystemCall  10 
+SystemCall  10 
+SystemCall  10 
+SystemCall  11 
+SystemCall  11 
+SystemCall  56 
+SystemCall  0 
+Total Number of System Calls =  26

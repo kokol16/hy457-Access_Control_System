@@ -203,41 +203,20 @@ int main(int argc, char **argv)
             }
             else
             {
-                wait(&status);
-                while (status == 1407)
+                while (1)
                 {
-                    ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-                    if (!in_call)
-                    {
-                        printf("SystemCall % lld \n", regs.orig_rax);
-                        in_call = 1;
-                        counter++;
-                    }
-                    else
-                        in_call = 0;
-                    ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+
                     wait(&status);
+                    if (WIFEXITED(status))
+                        break;
+                    orig_eax = ptrace(PTRACE_PEEKUSER, pid, 4 * ORIG_EAX, NULL);
+		//	printf("syscall nice %d\n",SYS_nice);
+                 //   if(orig_eax==SYS_nice)
+                    printf("The child made a system call %ld\n", orig_eax);
+                  ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+                   // ptrace(PTRACE_CONT, pid,	 NULL, NULL);
                 }
             }
-            printf("Total Number of System Calls = % d\n", counter);
-
-            /*wait(NULL);
-                struct user_regs_struct regs;
-                ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-                printf("The child made a system call %lld\n", regs.orig_rax);*/
-
-            /*wait(&status);
-                    while (status == 1407)
-                    {
-                        ptrace(PTRACE_GETREGS, pid, 0, &regs);
-                      
-                        unsigned long long int syscall_num = regs.orig_rax;
-                        fprintf(stderr, "number : %lld\n", syscall_num);
-                        break;
-                    }
-
-                    ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-                    wait(&status);*/
         }
     }
     else
