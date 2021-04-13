@@ -1,4 +1,4 @@
-mprotect mprotect munmap
+mprotect mprotect munmap munmap
 clone 5
 mmap 6
 gettid 3

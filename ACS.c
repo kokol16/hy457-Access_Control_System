@@ -6,9 +6,9 @@ int sys_call_name_to_id(char *name)
     unsigned int index = 0;
     for (index = 0; index < SYS_CALLS_SIZE; index++)
     {
-        if (strcmp(name, sys_call_table[index].name)==0)
+        if (strcmp(name, sys_call_table[index].name) == 0)
         {
-            return  sys_call_table[index].id;
+            return sys_call_table[index].id;
         }
     }
 }
@@ -18,11 +18,14 @@ sys_call_sequence_array *init_sys_call_table()
     FILE *fp = NULL;
     char *line, *sys_call_id;
     short flag = 0;
-    size_t size = 1024, index = 0, name_size = 1, digit_size = 1;
+    size_t size = 1024, index = 0;
+    unsigned int name_size = 100, digit_size = 100;
     char delim[] = "#define __NR_";
     unsigned int delim_index = 0, line_index = 0;
     line = malloc(sizeof(char) * size);
-    fp = fopen("uinstd32.h", "r");
+    fp = fopen("/usr/include/i386-linux-gnu/asm/unistd_32.h", "r");
+    //fp = fopen("unistd_32.h", "r");
+
     if (fp == NULL)
     {
         fprintf(stderr, "error can't open file \n");
@@ -32,8 +35,8 @@ sys_call_sequence_array *init_sys_call_table()
     memset(sys_call_table, 0, SYS_CALLS_SIZE);
     while (getline(&line, &size, fp) != EOF)
     {
-        name_size = 1;
-        digit_size = 1;
+        //name_size = 20;
+        //digit_size = 20;
         line_index = 0;
         delim_index = 0;
         flag = 0;
@@ -62,9 +65,11 @@ sys_call_sequence_array *init_sys_call_table()
         }
         if (flag)
         {
+            //printf("lala3\n");
+
             continue;
         }
-        if (line_index != 0)
+        else
         {
             int index_str = 0;
             int digit_index = 0;
@@ -77,9 +82,12 @@ sys_call_sequence_array *init_sys_call_table()
                 // printf("lala\n");
                 if (index_str >= name_size)
                 {
-
+                    //printf("lala : index_str %u\n", index_str);
                     name_size *= 2;
-                    sys_call_table[index].name = realloc(sys_call_table[index].name, name_size * sizeof(char));
+                    //printf("lala : new size  %u\n", name_size);
+                    sys_call_table[index].name = (char *)realloc(sys_call_table[index].name, name_size * sizeof(char));
+
+                    //printf("lala2\n");
                 }
                 line_index++;
                 index_str++;
@@ -102,8 +110,8 @@ sys_call_sequence_array *init_sys_call_table()
             sys_call_id[digit_index] = '\0';
             // printf("%s\n", sys_call_id);
             sys_call_table[index].id = atoi(sys_call_id);
-           // printf("%s ", sys_call_table[index].name);
-           // printf("%d\n", sys_call_table[index].id);
+            // printf("%s ", sys_call_table[index].name);
+            // printf("%d\n", sys_call_table[index].id);
 
             index++;
         }
@@ -140,8 +148,7 @@ sys_call_info create_sys_call_info_entry(char *_name, int times)
     entry.name = malloc(str_len + 1);
     memcpy(entry.name, _name, str_len + 1);
     entry.times = times;
-    entry.id = 0;
-
+    entry.id = sys_call_name_to_id(entry.name);
     return entry;
 }
 sys_call_sequence_array create_sys_call_seq_entry(char *_name)
@@ -150,7 +157,7 @@ sys_call_sequence_array create_sys_call_seq_entry(char *_name)
     int str_len = strlen(_name);
     entry.name = malloc(str_len + 1);
     memcpy(entry.name, _name, (strlen(_name) + 1));
-    entry.id = 0;
+    entry.id = sys_call_name_to_id(entry.name);
     return entry;
 }
 
@@ -192,6 +199,14 @@ unsigned int fill_structures(FILE *fp, sys_call_info *sys_call_info_array, sys_c
                 sys_call_name[times_start_pos - 1] = '\0';
                 sys_call_info_array[sys_call_info_array_index++] = create_sys_call_info_entry(sys_call_name, atoi(sys_call_name + times_start_pos));
             }
+            else
+            {
+                sys_call_name[index] = '\0';
+                //fprintf(stdout, "%s\n", sys_call_name);
+                seq_array[seq_array_index++] = create_sys_call_seq_entry(sys_call_name);
+
+                index = 0;
+            }
 
             tmp_index = 0;
             times_start_pos = 0;
@@ -226,6 +241,7 @@ unsigned int fill_structures(FILE *fp, sys_call_info *sys_call_info_array, sys_c
         if (index >= str_size)
         {
             str_size *= 2;
+
             sys_call_name = realloc(sys_call_name, str_size * sizeof(char));
         }
     }
@@ -260,8 +276,46 @@ unsigned int system_calls_size(FILE *fp, unsigned int *sequence_size)
     (*sequence_size) = (*sequence_size) + 1;
     return sys_calls_array_size;
 }
-void access_control_system(sys_call_info *sys_call_info_array, sys_call_sequence_array *seq_array)
+short int triggered = 1;
+void *threadproc()
 {
+	
+	//printf("xaxa\n");
+    while (triggered)
+    {
+        sleep(1);
+	//printf("reset called\n");
+        reset_sys_calls_reset_counters(sys_calls_count);
+    }
+}
+void reset_sys_calls_reset_counters(long *sys_calls_count)
+{
+    unsigned int index = 0;
+    for (index = 0; index < SYS_CALLS_SIZE; index++)
+    {
+	
+        sys_calls_count[index] = 0;
+    }
+}
+void access_control_system(sys_call_info *sys_call_info_array, unsigned int size, long sys_call_id)
+{
+    unsigned int index = 0;
+    static int first_time=1;
+    
+    sys_calls_count[sys_call_id] = sys_calls_count[sys_call_id] + 1;
+    //printf("count : %ld\n", sys_calls_count[47]);
+    printf("id : %ld\n", sys_call_id);
+
+    for (index = 0; index < size; index++)
+    {
+        if (sys_calls_count[sys_call_info_array[index].id] >= sys_call_info_array[index].times)
+        {
+            printf("suspect!!\n");
+            sys_calls_count[sys_call_info_array[index].id] = 0;
+        }
+    }
+    //every second
+    //reset_sys_calls_reset_counters(sys_calls_count);
 }
 
 short fill_sys_calls_array(FILE *fp, sys_call_info *sys_calls_array)
@@ -270,13 +324,13 @@ short fill_sys_calls_array(FILE *fp, sys_call_info *sys_calls_array)
 }
 int main(int argc, char **argv)
 {
-    printf ( "%d\n" ,sys_call_name_to_id("getppid") ) ;
-    /*FILE *fp;
+    FILE *fp;
     sys_call_info *sys_call_info_array;
     sys_call_sequence_array *seq_array;
 
     unsigned int sys_calls_array_size = 0, sys_calls_seq_size = 0;
     sys_call_info *sys_calls_array;
+    printf("%d\n", sys_call_name_to_id("getgid"));
     if (argc > 1)
     {
 
@@ -295,10 +349,12 @@ int main(int argc, char **argv)
         }
         else
         {
-            long sc_number, sc_retcode;
-            int counter = 0;
-            int in_call = 0;
+            pthread_t tid;
+            pthread_create(&tid, NULL, &threadproc, NULL);
+
             int status;
+            short is_acm_active = 0;
+            unsigned track = 0;
             long orig_eax;
             unsigned int is_first_time;
             struct user_regs_struct regs;
@@ -329,8 +385,28 @@ int main(int argc, char **argv)
                         {
                             orig_eax = ptrace(PTRACE_PEEKUSER, pid, sizeof(long) * ORIG_EAX, NULL);
                             printf("copy made a system call %ld\n", orig_eax);
+                            if (!is_acm_active)
+                            {
+
+                                if (seq_array[track].id == orig_eax)
+                                    track++;
+                                else
+                                {
+                                    track = 0;
+                                    if (seq_array[track].id == orig_eax)
+                                        track++;
+                                }
+                            }
+
+                            if (track == sys_calls_seq_size || is_acm_active) //trigger
+                            {
+                                triggered = 1;
+                                access_control_system(sys_call_info_array, sys_calls_array_size, orig_eax);
+                                is_acm_active = 1;
+                                track = 0;
+                            }
                             // orig_eax = ptrace(PTRACE_PEEKUSER, pid, 4 * ORIG_EAX, NULL);
-                           // printf("The child made a system call %ld\n", orig_eax);
+                            // printf("The child made a system call %ld\n", orig_eax);
                             is_first_time = 0;
                         }
                         is_first_time++;
@@ -338,6 +414,10 @@ int main(int argc, char **argv)
                     if (WIFEXITED(status) || WIFSIGNALED(status))
                     {
                         // child has exited or terminated
+                        //if (is_acm_active)
+                        triggered = 0;
+                        pthread_join(tid, NULL);
+
                         break;
                     }
 
@@ -351,5 +431,5 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "error no file inserted!\n");
         return -1;
-    }*/
+    }
 }
