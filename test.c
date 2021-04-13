@@ -1,5 +1,21 @@
 #include "ASC.h"
 
+#define __NR_restart_syscall 0
+#define __NR_exit 1
+#define __NR_fork 2
+#define __NR_read 3
+#define __NR_write 4
+#define __NR_open 5
+#define __NR_close 6
+#define __NR_waitpid 7
+#define __NR_creat 8
+#define __NR_link 9
+unsigned int sys_call_name_to_id(char *name)
+{
+    if (strcmp(name, "restart_syscall") == 0)
+        return __NR_restart_syscall;
+    else if (strcmp(name, "exit") == 0)
+}
 void print_sys_calls_sequence_array(sys_call_sequence_array *array, unsigned int size)
 {
     unsigned int index = 0;
@@ -187,6 +203,7 @@ int main(int argc, char **argv)
             int in_call = 0;
             int status;
             long orig_eax;
+            unsigned int is_first_time;
             struct user_regs_struct regs;
             int pid = fork();
             if (pid == 0)
@@ -198,23 +215,37 @@ int main(int argc, char **argv)
                 args[0][0] = '.';
                 args[0][1] = '/';
                 memcpy((args[0] + 2), argv[2], length + 1);
-                ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+                if (ptrace(PTRACE_TRACEME, 0, NULL, NULL))
+                    perror("ptrace");
                 execvp(args[0], args);
             }
             else
             {
+                is_first_time = 0;
                 while (1)
                 {
 
                     wait(&status);
-                    if (WIFEXITED(status))
+                    if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP)
+                    {
+                        if (is_first_time % 2 == 0)
+                        {
+                            orig_eax = ptrace(PTRACE_PEEKUSER, pid, sizeof(long) * ORIG_EAX, NULL);
+                            printf("copy made a system call %ld\n", orig_eax);
+                            /* orig_eax = ptrace(PTRACE_PEEKUSER, pid, 4 * ORIG_EAX, NULL);
+                            printf("The child made a system call %ld\n", orig_eax);*/
+                            is_first_time = 0;
+                        }
+                        is_first_time++;
+                    }
+                    if (WIFEXITED(status) || WIFSIGNALED(status))
+                    {
+                        // child has exited or terminated
                         break;
-                    orig_eax = ptrace(PTRACE_PEEKUSER, pid, 4 * ORIG_EAX, NULL);
-		//	printf("syscall nice %d\n",SYS_nice);
-                 //   if(orig_eax==SYS_nice)
-                    printf("The child made a system call %ld\n", orig_eax);
-                  ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-                   // ptrace(PTRACE_CONT, pid,	 NULL, NULL);
+                    }
+
+                    ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+                    //ptrace(PTRACE_CONT, pid,	 NULL, NULL);
                 }
             }
         }

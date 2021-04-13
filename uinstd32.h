@@ -1,3 +1,8 @@
+#ifndef _ASM_X86_UNISTD_32_H
+#define _ASM_X86_UNISTD_32_H 1
+
+#define __NR_restart_syscall 0
+#define __NR_exit 1
 #define __NR_fork 2
 #define __NR_read 3
 #define __NR_write 4
