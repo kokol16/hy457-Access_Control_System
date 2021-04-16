@@ -1,14 +1,59 @@
 #include "ASC.h"
 
+pthread_mutex_t lock;
+pthread_t tid;
+short int triggered = 1;
+
+
+/**
+ * @brief This method changes output color to red
+ * 
+ */
+void print_Red()
+{
+  fprintf(stderr, "\033[0;31m");
+}
+/**
+ * @brief This method reset output color from red to normal
+ * 
+ */
+void reset_Red()
+{
+  fprintf(stderr, "\033[0m");
+}
 int sys_call_name_to_id(char *name)
 {
-    sys_call_sequence_array *sys_call_table = init_sys_call_table();
+    static short first_time = 1;
+    static sys_call_sequence_array *sys_call_table;
+    if (first_time)
+    {
+        sys_call_table = init_sys_call_table();
+        first_time = 0;
+    }
     unsigned int index = 0;
     for (index = 0; index < SYS_CALLS_SIZE; index++)
     {
         if (strcmp(name, sys_call_table[index].name) == 0)
         {
             return sys_call_table[index].id;
+        }
+    }
+}
+char *sys_call_id_to_name(unsigned int id)
+{
+    static short first_time = 1;
+    static sys_call_sequence_array *sys_call_table;
+    if (first_time)
+    {
+        sys_call_table = init_sys_call_table();
+        first_time = 0;
+    }
+    unsigned int index = 0;
+    for (index = 0; index < SYS_CALLS_SIZE; index++)
+    {
+        if (id == sys_call_table[index].id)
+        {
+            return sys_call_table[index].name;
         }
     }
 }
@@ -276,16 +321,19 @@ unsigned int system_calls_size(FILE *fp, unsigned int *sequence_size)
     (*sequence_size) = (*sequence_size) + 1;
     return sys_calls_array_size;
 }
-short int triggered = 1;
-void *threadproc()
+void *threadproc(void *sys_calls_count_array)
 {
-	
-	//printf("xaxa\n");
+
+    //printf("xaxa\n");
     while (triggered)
     {
         sleep(1);
-	//printf("reset called\n");
+
+        //printf("reset called\n");+
+        //lock
+        pthread_mutex_lock(&lock);
         reset_sys_calls_reset_counters(sys_calls_count);
+        pthread_mutex_unlock(&lock);
     }
 }
 void reset_sys_calls_reset_counters(long *sys_calls_count)
@@ -293,29 +341,43 @@ void reset_sys_calls_reset_counters(long *sys_calls_count)
     unsigned int index = 0;
     for (index = 0; index < SYS_CALLS_SIZE; index++)
     {
-	
+
         sys_calls_count[index] = 0;
     }
 }
 void access_control_system(sys_call_info *sys_call_info_array, unsigned int size, long sys_call_id)
 {
     unsigned int index = 0;
-    static int first_time=1;
-    
+    static int first_time = 1;
+    if (first_time)
+    {
+        //create the thread that reset sys_calls counters
+        pthread_create(&tid, NULL, &threadproc, NULL);
+        first_time = 0;
+    }
+
+    //lock
+    pthread_mutex_lock(&lock);
     sys_calls_count[sys_call_id] = sys_calls_count[sys_call_id] + 1;
     //printf("count : %ld\n", sys_calls_count[47]);
-    printf("id : %ld\n", sys_call_id);
+
+    //printf("id : %ld\n", sys_call_id);
 
     for (index = 0; index < size; index++)
     {
         if (sys_calls_count[sys_call_info_array[index].id] >= sys_call_info_array[index].times)
         {
-            printf("suspect!!\n");
+            print_Red();
+            fprintf(stderr,"Warning programm called :  %s %u times in 1 second!!\n",  sys_call_info_array[index].name , sys_call_info_array[index].times);
+            reset_Red();
+            
             sys_calls_count[sys_call_info_array[index].id] = 0;
         }
     }
-    //every second
-    //reset_sys_calls_reset_counters(sys_calls_count);
+
+    //unlock
+    pthread_mutex_unlock(&lock);
+
 }
 
 short fill_sys_calls_array(FILE *fp, sys_call_info *sys_calls_array)
@@ -330,7 +392,6 @@ int main(int argc, char **argv)
 
     unsigned int sys_calls_array_size = 0, sys_calls_seq_size = 0;
     sys_call_info *sys_calls_array;
-    printf("%d\n", sys_call_name_to_id("getgid"));
     if (argc > 1)
     {
 
@@ -349,8 +410,6 @@ int main(int argc, char **argv)
         }
         else
         {
-            pthread_t tid;
-            pthread_create(&tid, NULL, &threadproc, NULL);
 
             int status;
             short is_acm_active = 0;
@@ -384,7 +443,7 @@ int main(int argc, char **argv)
                         if (is_first_time % 2 == 0)
                         {
                             orig_eax = ptrace(PTRACE_PEEKUSER, pid, sizeof(long) * ORIG_EAX, NULL);
-                            printf("copy made a system call %ld\n", orig_eax);
+                            printf("program  made a system call %ld (%s) \n", orig_eax, sys_call_id_to_name(orig_eax));
                             if (!is_acm_active)
                             {
 
@@ -417,6 +476,7 @@ int main(int argc, char **argv)
                         //if (is_acm_active)
                         triggered = 0;
                         pthread_join(tid, NULL);
+                        pthread_mutex_destroy(&lock);
 
                         break;
                     }
