@@ -4,14 +4,13 @@ pthread_mutex_t lock;
 pthread_t tid;
 short int triggered = 1;
 
-
 /**
  * @brief This method changes output color to red
  * 
  */
 void print_Red()
 {
-  fprintf(stderr, "\033[0;31m");
+    fprintf(stderr, "\033[0;31m");
 }
 /**
  * @brief This method reset output color from red to normal
@@ -19,7 +18,7 @@ void print_Red()
  */
 void reset_Red()
 {
-  fprintf(stderr, "\033[0m");
+    fprintf(stderr, "\033[0m");
 }
 int sys_call_name_to_id(char *name)
 {
@@ -368,22 +367,17 @@ void access_control_system(sys_call_info *sys_call_info_array, unsigned int size
         if (sys_calls_count[sys_call_info_array[index].id] >= sys_call_info_array[index].times)
         {
             print_Red();
-            fprintf(stderr,"Warning programm called :  %s %u times in 1 second!!\n",  sys_call_info_array[index].name , sys_call_info_array[index].times);
+            fprintf(stderr, "Warning programm called :  %s %u times in 1 second!!\n", sys_call_info_array[index].name, sys_call_info_array[index].times);
             reset_Red();
-            
+
             sys_calls_count[sys_call_info_array[index].id] = 0;
         }
     }
 
     //unlock
     pthread_mutex_unlock(&lock);
-
 }
 
-short fill_sys_calls_array(FILE *fp, sys_call_info *sys_calls_array)
-{
-    return 1;
-}
 int main(int argc, char **argv)
 {
     FILE *fp;
@@ -403,7 +397,6 @@ int main(int argc, char **argv)
         fill_structures(fp, sys_call_info_array, seq_array);
         print_sys_calls_sequence_array(seq_array, sys_calls_seq_size);
         print_sys_calls_array_info(sys_call_info_array, sys_calls_array_size);
-
         if (argv[2] == NULL)
         {
             fprintf(stderr, "error not a second argument provided \n");
@@ -415,7 +408,7 @@ int main(int argc, char **argv)
             short is_acm_active = 0;
             unsigned track = 0;
             long orig_eax;
-            unsigned int is_first_time;
+            unsigned int is_first_time = 0;
             struct user_regs_struct regs;
             int pid = fork();
             if (pid == 0)
@@ -433,13 +426,25 @@ int main(int argc, char **argv)
             }
             else
             {
+
                 is_first_time = 0;
                 while (1)
                 {
-
                     wait(&status);
-                    if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP)
+                    ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACESYSGOOD);
+                    if (WIFEXITED(status) || WIFSIGNALED(status))
                     {
+
+                        // child has exited or terminated
+                        triggered = 0;
+                        pthread_join(tid, NULL);
+                        pthread_mutex_destroy(&lock);
+
+                        break;
+                    }
+                    if (WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80))
+                    {
+
                         if (is_first_time % 2 == 0)
                         {
                             orig_eax = ptrace(PTRACE_PEEKUSER, pid, sizeof(long) * ORIG_EAX, NULL);
@@ -464,25 +469,12 @@ int main(int argc, char **argv)
                                 is_acm_active = 1;
                                 track = 0;
                             }
-                            // orig_eax = ptrace(PTRACE_PEEKUSER, pid, 4 * ORIG_EAX, NULL);
-                            // printf("The child made a system call %ld\n", orig_eax);
                             is_first_time = 0;
                         }
                         is_first_time++;
                     }
-                    if (WIFEXITED(status) || WIFSIGNALED(status))
-                    {
-                        // child has exited or terminated
-                        //if (is_acm_active)
-                        triggered = 0;
-                        pthread_join(tid, NULL);
-                        pthread_mutex_destroy(&lock);
-
-                        break;
-                    }
 
                     ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
-                    //ptrace(PTRACE_CONT, pid,	 NULL, NULL);
                 }
             }
         }
