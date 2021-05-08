@@ -7,12 +7,16 @@
 #include <sys/syscall.h>
 #include <sys/reg.h>
 #include <sys/syscall.h>
-#include <sys/user.h> /* for struct user_regs_struct */
+#include <sys/user.h> 
 #include <sys/ptrace.h>
 #include <ctype.h>
 #include <pthread.h>
 #define SYS_CALLS_SIZE 356
 
+#define SUCCESS 1
+#define ARGS_ERROR 0
+#define FILE_ERROR -2
+#define FILL_STRUCTURES_ERROR -3
 
 
 typedef struct sys_call_info
@@ -40,3 +44,4 @@ unsigned int fill_structures(FILE *fp, sys_call_info *sys_call_info_array, sys_c
 sys_call_sequence_array *init_sys_call_table();
 
 void reset_sys_calls_reset_counters(long *sys_calls_count);
+int access_control_system_wrapper(int argc, char **argv);

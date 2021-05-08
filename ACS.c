@@ -20,6 +20,13 @@ void reset_Red()
 {
     fprintf(stderr, "\033[0m");
 }
+/**
+ * @brief This method returns the id of he current
+ * system call , using his name
+ * 
+ * @param name name of sys call
+ * @return int id of sys call
+ */
 int sys_call_name_to_id(char *name)
 {
     static short first_time = 1;
@@ -38,6 +45,13 @@ int sys_call_name_to_id(char *name)
         }
     }
 }
+/**
+ * @brief This method returns the name of
+ * a sys call knowing his id 
+ * 
+ * @param id of syscall
+ * @return char* name of sys call
+ */
 char *sys_call_id_to_name(unsigned int id)
 {
     static short first_time = 1;
@@ -55,7 +69,15 @@ char *sys_call_id_to_name(unsigned int id)
             return sys_call_table[index].name;
         }
     }
+    return NULL;
 }
+/**
+ * @brief This method is parsing the file with
+ * the system calls id and returns an array
+ * that has the name and the for each system call
+ * 
+ * @return sys_call_sequence_array* 
+ */
 sys_call_sequence_array *init_sys_call_table()
 {
     sys_call_sequence_array *sys_call_table;
@@ -68,8 +90,6 @@ sys_call_sequence_array *init_sys_call_table()
     unsigned int delim_index = 0, line_index = 0;
     line = malloc(sizeof(char) * size);
     fp = fopen("/usr/include/i386-linux-gnu/asm/unistd_32.h", "r");
-    //fp = fopen("unistd_32.h", "r");
-
     if (fp == NULL)
     {
         fprintf(stderr, "error can't open file \n");
@@ -79,8 +99,6 @@ sys_call_sequence_array *init_sys_call_table()
     memset(sys_call_table, 0, SYS_CALLS_SIZE);
     while (getline(&line, &size, fp) != EOF)
     {
-        //name_size = 20;
-        //digit_size = 20;
         line_index = 0;
         delim_index = 0;
         flag = 0;
@@ -95,12 +113,9 @@ sys_call_sequence_array *init_sys_call_table()
                     break;
                 }
             }
-            //printf("%c",line[line_index]);
-            //printf("%c\n",delim[delim_index]);
 
             if (line[line_index] != delim[delim_index])
             {
-                //printf("lala2\n");
                 flag = 1;
                 break;
             }
@@ -109,7 +124,6 @@ sys_call_sequence_array *init_sys_call_table()
         }
         if (flag)
         {
-            //printf("lala3\n");
 
             continue;
         }
@@ -119,19 +133,13 @@ sys_call_sequence_array *init_sys_call_table()
             int digit_index = 0;
             sys_call_table[index].name = malloc(sizeof(char) * name_size);
             sys_call_id = malloc(sizeof(char) * digit_size);
-
             while (line[line_index] != ' ')
             {
                 memcpy(&sys_call_table[index].name[index_str], &line[line_index], sizeof(char));
-                // printf("lala\n");
                 if (index_str >= name_size)
                 {
-                    //printf("lala : index_str %u\n", index_str);
                     name_size *= 2;
-                    //printf("lala : new size  %u\n", name_size);
                     sys_call_table[index].name = (char *)realloc(sys_call_table[index].name, name_size * sizeof(char));
-
-                    //printf("lala2\n");
                 }
                 line_index++;
                 index_str++;
@@ -141,7 +149,6 @@ sys_call_sequence_array *init_sys_call_table()
                 if (isdigit(line[line_index]))
                 {
                     memcpy(&sys_call_id[digit_index++], &line[line_index], sizeof(char));
-                    //         printf("%c ", line[line_index]);
                 }
                 if (digit_index >= digit_size)
                 {
@@ -152,10 +159,7 @@ sys_call_sequence_array *init_sys_call_table()
             }
             sys_call_table[index].name[index_str] = '\0';
             sys_call_id[digit_index] = '\0';
-            // printf("%s\n", sys_call_id);
             sys_call_table[index].id = atoi(sys_call_id);
-            // printf("%s ", sys_call_table[index].name);
-            // printf("%d\n", sys_call_table[index].id);
 
             index++;
         }
@@ -164,6 +168,13 @@ sys_call_sequence_array *init_sys_call_table()
     return sys_call_table;
 }
 
+/**
+ * @brief This method prints the array with the name and 
+ * id of each syscall
+ * 
+ * @param array of syscalls 
+ * @param size  of array
+ */
 void print_sys_calls_sequence_array(sys_call_sequence_array *array, unsigned int size)
 {
     unsigned int index = 0;
@@ -174,6 +185,14 @@ void print_sys_calls_sequence_array(sys_call_sequence_array *array, unsigned int
         index++;
     }
 }
+/**
+ * @brief This method prints the array that has each 
+ * system call we track and the informations about
+ * how many times can be called , his name and id
+ * 
+ * @param array of system call information
+ * @param size  of array
+ */
 void print_sys_calls_array_info(sys_call_info *array, unsigned int size)
 {
     unsigned int index = 0;
@@ -185,6 +204,14 @@ void print_sys_calls_array_info(sys_call_info *array, unsigned int size)
         index++;
     }
 }
+
+/**
+ * @brief Create a sys call info entry object
+ * 
+ * @param _name name of system call
+ * @param times how many times can be called each second
+ * @return sys_call_info 
+ */
 sys_call_info create_sys_call_info_entry(char *_name, int times)
 {
     sys_call_info entry;
@@ -195,6 +222,13 @@ sys_call_info create_sys_call_info_entry(char *_name, int times)
     entry.id = sys_call_name_to_id(entry.name);
     return entry;
 }
+/**
+ * @brief Create a sys call seq entry object
+ * Those system calls are the trigger the
+ * access contol system
+ * @param _name of syscall
+ * @return sys_call_sequence_array 
+ */
 sys_call_sequence_array create_sys_call_seq_entry(char *_name)
 {
     sys_call_sequence_array entry;
@@ -205,6 +239,17 @@ sys_call_sequence_array create_sys_call_seq_entry(char *_name)
     return entry;
 }
 
+/**
+ * @brief This method fills the array that keeps
+ * the sequence that triggers the control access system.
+ * and the array that holds the information about
+ * how many times can a system call be called
+ * 
+ * @param fp input file 
+ * @param sys_call_info_array 
+ * @param seq_array 
+ * @return unsigned int  (1)on success (0) on failure
+ */
 unsigned int fill_structures(FILE *fp, sys_call_info *sys_call_info_array, sys_call_sequence_array *seq_array)
 {
     int ch = 0;
@@ -246,7 +291,6 @@ unsigned int fill_structures(FILE *fp, sys_call_info *sys_call_info_array, sys_c
             else
             {
                 sys_call_name[index] = '\0';
-                //fprintf(stdout, "%s\n", sys_call_name);
                 seq_array[seq_array_index++] = create_sys_call_seq_entry(sys_call_name);
 
                 index = 0;
@@ -294,6 +338,14 @@ unsigned int fill_structures(FILE *fp, sys_call_info *sys_call_info_array, sys_c
     return 1;
 }
 
+/**
+ * @brief This method finds the size of the system
+ * call sequence 
+ * 
+ * @param fp 
+ * @param sequence_size 
+ * @return unsigned int 
+ */
 unsigned int system_calls_size(FILE *fp, unsigned int *sequence_size)
 {
     unsigned int sys_calls_array_size = 0;
@@ -303,7 +355,7 @@ unsigned int system_calls_size(FILE *fp, unsigned int *sequence_size)
     if (fp == NULL)
     {
         fprintf(stderr, "error can't open file\n");
-        return -1;
+        return 0;
     }
     while ((ch = fgetc(fp)) != EOF)
     {
@@ -320,21 +372,33 @@ unsigned int system_calls_size(FILE *fp, unsigned int *sequence_size)
     (*sequence_size) = (*sequence_size) + 1;
     return sys_calls_array_size;
 }
+/**
+ * @brief This method resets the array that keeps
+ * how many times each system call is called every
+ * second 
+ * 
+ * @param sys_calls_count_array 
+ * @return void* 
+ */
 void *threadproc(void *sys_calls_count_array)
 {
 
-    //printf("xaxa\n");
     while (triggered)
     {
         sleep(1);
 
-        //printf("reset called\n");+
         //lock
         pthread_mutex_lock(&lock);
         reset_sys_calls_reset_counters(sys_calls_count);
         pthread_mutex_unlock(&lock);
     }
 }
+/**
+ * @brief Reset the times that each system call
+ * is called by tracee
+ * 
+ * @param sys_calls_count 
+ */
 void reset_sys_calls_reset_counters(long *sys_calls_count)
 {
     unsigned int index = 0;
@@ -358,10 +422,6 @@ void access_control_system(sys_call_info *sys_call_info_array, unsigned int size
     //lock
     pthread_mutex_lock(&lock);
     sys_calls_count[sys_call_id] = sys_calls_count[sys_call_id] + 1;
-    //printf("count : %ld\n", sys_calls_count[47]);
-
-    //printf("id : %ld\n", sys_call_id);
-
     for (index = 0; index < size; index++)
     {
         if (sys_calls_count[sys_call_info_array[index].id] >= sys_call_info_array[index].times)
@@ -377,29 +437,37 @@ void access_control_system(sys_call_info *sys_call_info_array, unsigned int size
     //unlock
     pthread_mutex_unlock(&lock);
 }
-
-int main(int argc, char **argv)
+int access_control_system_wrapper(int argc, char **argv)
 {
     FILE *fp;
     sys_call_info *sys_call_info_array;
     sys_call_sequence_array *seq_array;
-
     unsigned int sys_calls_array_size = 0, sys_calls_seq_size = 0;
     sys_call_info *sys_calls_array;
     if (argc > 1)
     {
-
+        if (argv[1] == NULL)
+            return ARGS_ERROR;
         fp = fopen(argv[1], "r");
+        if (fp == NULL)
+        {
+            fprintf(stderr, "error can't open file \n");
+            return FILE_ERROR;
+        }
         sys_calls_array_size = system_calls_size(fp, &sys_calls_seq_size);
         fprintf(stdout, "found :  %u sys calls\n", sys_calls_array_size);
         sys_call_info_array = malloc(sizeof(sys_call_info) * sys_calls_array_size);
         seq_array = malloc(sizeof(sys_call_sequence_array) * sys_calls_seq_size);
-        fill_structures(fp, sys_call_info_array, seq_array);
+        if (!fill_structures(fp, sys_call_info_array, seq_array))
+        {
+            return FILL_STRUCTURES_ERROR;
+        }
         print_sys_calls_sequence_array(seq_array, sys_calls_seq_size);
         print_sys_calls_array_info(sys_call_info_array, sys_calls_array_size);
         if (argv[2] == NULL)
         {
             fprintf(stderr, "error not a second argument provided \n");
+            return ARGS_ERROR;
         }
         else
         {
@@ -439,7 +507,6 @@ int main(int argc, char **argv)
                         triggered = 0;
                         pthread_join(tid, NULL);
                         pthread_mutex_destroy(&lock);
-
                         break;
                     }
                     if (WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80))
@@ -453,12 +520,12 @@ int main(int argc, char **argv)
                             {
 
                                 if (seq_array[track].id == orig_eax)
-                                    track++;
+                                    ++track;
                                 else
                                 {
                                     track = 0;
                                     if (seq_array[track].id == orig_eax)
-                                        track++;
+                                        ++track;
                                 }
                             }
 
@@ -471,7 +538,7 @@ int main(int argc, char **argv)
                             }
                             is_first_time = 0;
                         }
-                        is_first_time++;
+                        ++is_first_time;
                     }
 
                     ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
@@ -482,6 +549,20 @@ int main(int argc, char **argv)
     else
     {
         fprintf(stderr, "error no file inserted!\n");
-        return -1;
+        return FILE_ERROR;
+    }
+    return SUCCESS;
+}
+int main(int argc, char **argv)
+{
+    int res = access_control_system_wrapper(argc, argv);
+    if(res==SUCCESS)
+    {
+        printf("ALL WENT GOOD \n");
+    }
+    else 
+    {
+        printf("SOMETHING WENT WRONG \n");
+
     }
 }
