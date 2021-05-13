@@ -414,6 +414,7 @@ void access_control_system(sys_call_info *sys_call_info_array, unsigned int size
     static int first_time = 1;
     if (first_time)
     {
+        fprintf(stderr, "ACCESS CONTROL SYSTEM IS ENABLED!\n");
         //create the thread that reset sys_calls counters
         pthread_create(&tid, NULL, &threadproc, NULL);
         first_time = 0;
@@ -455,15 +456,20 @@ int access_control_system_wrapper(int argc, char **argv)
             return FILE_ERROR;
         }
         sys_calls_array_size = system_calls_size(fp, &sys_calls_seq_size);
-        fprintf(stdout, "found :  %u sys calls\n", sys_calls_array_size);
         sys_call_info_array = malloc(sizeof(sys_call_info) * sys_calls_array_size);
         seq_array = malloc(sizeof(sys_call_sequence_array) * sys_calls_seq_size);
         if (!fill_structures(fp, sys_call_info_array, seq_array))
         {
             return FILL_STRUCTURES_ERROR;
         }
+        fprintf(stderr, "INFORMATIONS FROM INPUT FILE!\n");
+        fprintf(stderr, "=============================\n");
+        fprintf(stderr, "SEQUENCE THAT TRIGGERS THE ACS SYSTEM!\n");
         print_sys_calls_sequence_array(seq_array, sys_calls_seq_size);
+        fprintf(stderr, "SUSPECT SYSTEM CALLS!\n");
         print_sys_calls_array_info(sys_call_info_array, sys_calls_array_size);
+        fprintf(stderr, "=============================\n");
+
         if (argv[2] == NULL)
         {
             fprintf(stderr, "error not a second argument provided \n");
@@ -490,6 +496,8 @@ int access_control_system_wrapper(int argc, char **argv)
                 memcpy((args[0] + 2), argv[2], length + 1);
                 if (ptrace(PTRACE_TRACEME, 0, NULL, NULL))
                     perror("ptrace");
+                fprintf(stderr, "START TRACING THE PROGRAM!\n");
+
                 execvp(args[0], args);
             }
             else
@@ -556,13 +564,12 @@ int access_control_system_wrapper(int argc, char **argv)
 int main(int argc, char **argv)
 {
     int res = access_control_system_wrapper(argc, argv);
-    if(res==SUCCESS)
+    if (res == SUCCESS)
     {
         printf("ALL WENT GOOD \n");
     }
-    else 
+    else
     {
         printf("SOMETHING WENT WRONG \n");
-
     }
 }
